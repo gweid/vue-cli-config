@@ -302,7 +302,12 @@ module.exports = (api, options) => {
 }
 ```
 
-可以看出，这个文件就是导出了一个函数，apply() 就是执行的这个导出的函数，回头看看：
+可以看出，这个文件就是导出了一个函数，这个函数接收两个参数：
+
+- api
+- options
+
+再回头看看 apply() 就是执行的时候，也传入了两个参数：
 
 ```js
 this.plugins.forEach(({ id, apply }) => {
@@ -312,7 +317,7 @@ this.plugins.forEach(({ id, apply }) => {
 })
 ```
 
-所以 api.registerCommand 实际上执行的就是 new PluginAPI(id, this) 上的 registerCommand 方法，这个 new PluginAPI(id, this) 传进去两个参数，一个是 id（built-in: commands/serve），一个是 this（当前 service）
+api 是所以 api.registerCommand 实际上执行的就是 new PluginAPI(id, this) 上的 registerCommand 方法，这个 new PluginAPI(id, this) 传进去两个参数，一个是 id（built-in: commands/serve），一个是 this（当前 service）
 
 
 
@@ -336,9 +341,16 @@ class PluginAPI {
 ```
 
 - 这里的 service 就是传过来的 Service 类
-- registerCommand 注册 command，并将其方法 Service 类的 commands 上
 
-到此，终于是知道了为什么可以 this.commands[name] 获取到 command，并且 command 里面有 fn 函数
+- registerCommand 注册 command，实际上就是：
+
+  ```js
+   this.service.commands['serve'] = { fn, opts: opts || {}}
+  ```
+
+到此，终于是知道了为什么可以通过 this.commands[name] 获取到 command，并且command 里面有 fn 函数
+
+总结一些流程图：
 
 ![](/imgs/img1.png)
 
