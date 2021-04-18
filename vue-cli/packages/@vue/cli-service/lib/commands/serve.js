@@ -14,6 +14,7 @@ const defaults = {
 }
 
 module.exports = (api, options) => {
+  // 执行 api.registerCommand 注册 Command
   api.registerCommand('serve', {
     description: 'start development server',
     usage: 'vue-cli-service serve [options] [entry]',

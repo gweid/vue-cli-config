@@ -63,18 +63,25 @@ module.exports = class Service {
     if (mode) {
       this.loadEnv(mode)
     }
-    // load base .env
+    // 加载环境相关
     this.loadEnv()
 
-    // load user config
+    // 加载用户配置，就是 vue.config.js
     const userOptions = this.loadUserOptions()
+
+    // lodash 的 defaultsDeep 作用：defaultsDeep({ 'a': { 'b': 2 } }, { 'a': { 'b': 1, 'c': 3 } })
+    // 结果就是 { 'a': { 'b': 2, 'c': 3 } }
+    // 这里的 defaults() 执行的就过就是一些定义了一些 webpack 默认的配置
+    // 所以这里实际上的作用就是，用户配置跟定义的一些基础默认配置合并
     this.projectOptions = defaultsDeep(userOptions, defaults())
 
     debug('vue:project-config')(this.projectOptions)
 
     // apply plugins.
+    // 遍历 plugins
     this.plugins.forEach(({ id, apply }) => {
       if (this.pluginsToSkip.has(id)) return
+      // 执行 plugins 上的 apply 方法
       apply(new PluginAPI(id, this), this.projectOptions)
     })
 
@@ -140,13 +147,16 @@ module.exports = class Service {
   }
 
   resolvePlugins (inlinePlugins, useBuiltIn) {
+    // 用于 builtInPlugins 数组遍历的 map 方法的回调
     const idToPlugin = id => ({
-      id: id.replace(/^.\//, 'built-in:'),
-      apply: require(id)
+      id: id.replace(/^.\//, 'built-in:'), // built-in: commands/serve
+      apply: require(id) // require('./commands/serve')
     })
 
     let plugins
 
+    // 定义了一些内置的插件，里面都是一个个文件路径
+    // 遍历这个数组，执行 map 方法
     const builtInPlugins = [
       './commands/serve',
       './commands/build',
@@ -159,6 +169,11 @@ module.exports = class Service {
       './config/app'
     ].map(idToPlugin)
 
+    // 有没有使用一些其他的内置插件，比如 vue-router、vuex 等
+    // 比如在需要使用 vuex 的时候，允许 vue add vuex 这样子为项目添加 vuex
+    // 这是因为 vuex 开发的时候，可以作为 vue cli 插件使用
+    // 我们也可以为 vue cli 脚手架开发插件，比如 element-plus 可以通过 vue add element-plus 引入
+    // 最后，所有的插件都合并后保存在 plugins 里面
     if (inlinePlugins) {
       plugins = useBuiltIn !== false
         ? builtInPlugins.concat(inlinePlugins)
@@ -199,6 +214,7 @@ module.exports = class Service {
       })))
     }
 
+    // 将 plugins 返回
     return plugins
   }
 
@@ -206,16 +222,22 @@ module.exports = class Service {
     // resolve mode
     // prioritize inline --mode
     // fallback to resolved default modes from plugins or development if --watch is defined
+    // 根据参数确定是开发环境还是生产环境
+    // name 就是 vue-cli-service serve/vue-cli-service build 中的 serve/build
     const mode = args.mode || (name === 'build' && args.watch ? 'development' : this.modes[name])
 
     // --skip-plugins arg may have plugins that should be skipped during init()
     this.setPluginsToSkip(args)
 
     // load env variables, load user config, apply plugins
+    // 加载环境变量相关、用户配置、应用插件
     this.init(mode)
 
     args._ = args._ || []
+
+    // 通过 this.commands[name] 获取到 command
     let command = this.commands[name]
+
     if (!command && name) {
       error(`command "${name}" does not exist.`)
       process.exit(1)
@@ -226,7 +248,10 @@ module.exports = class Service {
       args._.shift() // remove command itself
       rawArgv.shift()
     }
+
+    // 拿到 command 的 fn 函数
     const { fn } = command
+    // 执行 fn 函数，返回结果
     return fn(args, rawArgv)
   }
 
@@ -301,6 +326,7 @@ module.exports = class Service {
     return config
   }
 
+  // 加载用户配置 vue.config.js
   loadUserOptions () {
     // vue.config.c?js
     let fileConfig, pkgConfig, resolved, resolvedFrom
