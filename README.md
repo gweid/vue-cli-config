@@ -468,4 +468,30 @@ module.exports = {
 
 
 
-**总结：**vue cli 的封装性比较高，包括 npm run serve/build 还有默认的基础配置都是通过 plugin 的形式集成到 vue cli 中，同时，vue cli 还开放出去了 plugin，那么别人也可以写 vue cli 插件，将功能集成到 vue cli。比如：vue-router、vuex、element-plus，都可以通过 vue add xxx 的形式添加进 vue 项目，这就是依赖于 vue cli 开放的插件机制。
+**总结：**vue cli 的封装性比较高，包括 npm run serve/build 还有默认的基础配置都是通过 plugin 的形式集成到 vue cli 中，同时，vue cli 还开放出去了 plugin，那么别人也可以写 vue cli 插件，将功能集成到 vue cli。比如：vue-router、vuex、element-plus，都可以通过 vue add xxx 的形式添加进 vue 项目，这就是依赖于 vue cli 开放的插件机制。（vue-router、vuex 是 cli 内置的插件，element-plus 是开发的第三方 cli 插件）
+
+
+
+## vue cli 在开发环境的默认配置
+
+vue 提供了命令可以查看默认的开发环境 webpack 配置
+
+进入项目 vue-app，执行命令：
+
+```js
+vue inspect --mode=development > webpack.dev.config.js
+```
+
+在项目根目录下生成一个 webpack.dev.config.js 文件，这里面就是开发环境的默认配置
+
+
+
+## vue cli 在生产环境的默认配置
+
+进入项目 vue-app，执行命令：
+
+```js
+vue inspect --mode=production > webpack.prod.config.js
+```
+
+在项目根目录下生成一个 webpack.prod.config.js 文件，这里面就是生产环境的默认配置
