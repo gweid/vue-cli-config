@@ -85,10 +85,13 @@ module.exports = class Service {
       apply(new PluginAPI(id, this), this.projectOptions)
     })
 
-    // apply webpack configs from project config file
+    // vue.config.js 中有 chainWebpack，可以通过 chainWebpack 进行链式操作
+    // chainWebpack 的链式操作是基于 webpack-chain 这个库
     if (this.projectOptions.chainWebpack) {
       this.webpackChainFns.push(this.projectOptions.chainWebpack)
     }
+    // vue.config.js 中有 configureWebpack
+    // configureWebpack 对象将会被 webpack-merge 合并入最终的 webpack 配置
     if (this.projectOptions.configureWebpack) {
       this.webpackRawConfigFns.push(this.projectOptions.configureWebpack)
     }
@@ -158,11 +161,13 @@ module.exports = class Service {
     // 定义了一些内置的插件，里面都是一个个文件路径
     // 遍历这个数组，执行 map 方法
     const builtInPlugins = [
+      // 这些是执行命令相关的
       './commands/serve',
       './commands/build',
       './commands/inspect',
       './commands/help',
       // config plugins are order sensitive
+      // 这些是 webpack 基础配置相关的
       './config/base',
       './config/css',
       './config/prod',

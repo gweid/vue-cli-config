@@ -30,6 +30,7 @@ module.exports = (api, options) => {
       '--skip-plugins': `comma-separated list of plugin names to skip for this run`
     }
   }, async function serve (args) {
+    // 开始执行开发环境编译
     info('Starting development server...')
 
     // although this is primarily a dev server, it is possible that we
@@ -39,8 +40,12 @@ module.exports = (api, options) => {
 
     const url = require('url')
     const { chalk } = require('@vue/cli-shared-utils')
+
+    // 引入 webpack
     const webpack = require('webpack')
+    // 引入 webpack-dev-server
     const WebpackDevServer = require('webpack-dev-server')
+
     const portfinder = require('portfinder')
     const prepareURLs = require('../util/prepareURLs')
     const prepareProxy = require('../util/prepareProxy')
@@ -72,10 +77,10 @@ module.exports = (api, options) => {
       }
     })
 
-    // resolve webpack config
+    // 通过 api.resolveWebpackConfig 函数加载 webpack 配置
     const webpackConfig = api.resolveWebpackConfig()
 
-    // check for common config errors
+    // 对 webpack 配置进行校验
     validateWebpackConfig(webpackConfig, api, options)
 
     // load user devServer options with higher priority than devServer
@@ -160,7 +165,7 @@ module.exports = (api, options) => {
       addDevClientToEntry(webpackConfig, devClients)
     }
 
-    // create compiler
+    // 调用 webpack 函数返回 compiler
     const compiler = webpack(webpackConfig)
 
     // handle compiler error
@@ -169,7 +174,7 @@ module.exports = (api, options) => {
       process.exit(1)
     })
 
-    // create server
+    // new WebpackDevServer，将 compiler 传进去，并且传入一些 webpack-dev-server 相关的参数
     const server = new WebpackDevServer(compiler, Object.assign({
       logLevel: 'silent',
       clientLogLevel: 'silent',

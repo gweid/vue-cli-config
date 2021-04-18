@@ -4,6 +4,12 @@
 
 
 
+- [ ] vue cli 源码及相关配置
+  - [x] vue cli 启动到加载配置流程
+  - [ ] vue cli 默认使用了哪些 webpack 配置，做了哪些优化
+
+
+
 ## 准备工作
 
 1. 将 vue-cli 源码下载下来
@@ -16,6 +22,10 @@ vue-cli-config
 ├── vue-app     // vue create vue-app 创建的项目
 └── vue-cli     // vue-cli 源码
 ```
+
+
+
+**先以 npm run serve 为例，理解了 npm run serve 的执行流程，npm run build 也差不多**
 
 
 
@@ -186,7 +196,7 @@ class Service {
 - 遍历 vue cli 的 plugins，执行插件的 apply 方法
 - ...
 
-这里面最重要的异步就是：遍历 vue cli 的插件，执行插件的 apply 方法。看看 vue cli 插件是怎么来的：
+这里面最重要的异步就是：遍历 vue cli 的插件，执行插件的 apply 方法。看看 plugins 是怎么来的：
 
 ```js
 class Service {
@@ -206,11 +216,12 @@ class Service {
         // 定义了一些内置的插件，里面都是一个个文件路径
         // 遍历这个数组，执行 map 方法
         const builtInPlugins = [
+          // 这些是执行命令相关的
           './commands/serve',
           './commands/build',
           './commands/inspect',
           './commands/help',
-          // config plugins are order sensitive
+          // 这些是 webpack 基础配置相关的
           './config/base',
           './config/css',
           './config/prod',
@@ -268,7 +279,9 @@ class Service {
 }
 ```
 
-plugins 通过 resolvePlugins 函数生成，最终返回的类似：
+plugins 通过 resolvePlugins 函数生成
+
+resolvePlugins 最终返回的类似：
 
 ```js
 plugins = [
@@ -285,7 +298,28 @@ plugins = [
 
 
 
-来看看 `@vue\cli-service\lib\commands\serve.js` 这个文件：
+**注意： builtInPlugins 中除了定义了执行命令相关的 plugin，还定义了配置相关的 plugin**, config 下面的就是 webpack 的初始配置，或者说 vue cli 的默认配置。也就是说，在 vue cli 中，配置都是通过插件集成
+
+```js
+const builtInPlugins = [
+    // 这些是执行命令相关的
+    './commands/serve',
+    './commands/build',
+    './commands/inspect',
+    './commands/help',
+    // 这些是 webpack 基础配置相关的
+    './config/base',
+    './config/css',
+    './config/prod',
+    './config/app'
+].map(idToPlugin)
+```
+
+可以进到文件 `@vue\cli-service\lib\config\base.js`下面看，里面就是定义了一堆 vue 的初始 webpack 配置
+
+
+
+接下来看看 `@vue\cli-service\lib\commands\serve.js` 这个文件：
 
 ```js
 module.exports = (api, options) => {
@@ -317,7 +351,7 @@ this.plugins.forEach(({ id, apply }) => {
 })
 ```
 
-api 是所以 api.registerCommand 实际上执行的就是 new PluginAPI(id, this) 上的 registerCommand 方法，这个 new PluginAPI(id, this) 传进去两个参数，一个是 id（built-in: commands/serve），一个是 this（当前 service）
+api 是通过 new PluginAPI(id, this) 得到的实例，所以 api.registerCommand 实际上执行的就是 new PluginAPI(id, this) 上的 registerCommand 方法，这个 new PluginAPI(id, this) 传进去两个参数，一个是 id（built-in: commands/serve），一个是 this（当前 service）
 
 
 
@@ -356,5 +390,82 @@ class PluginAPI {
 
 
 
-## vue cli 加载配置
+## vue cli 加载配置进行编译
 
+经过上面知道，执行 fn(args, rawArgv) 开始加载 webpack 配置，而这个 fn 函数就是执行 api.registerCommand 的第三个参数，而 api 是通过 new PluginAPI(id, this) 得到的实例
+
+```js
+module.exports = (api, options) => {
+    // 执行 api.registerCommand 注册 Command
+     api.registerCommand(
+        'serve',
+        {
+        description: 'start development server',
+    	usage: 'vue-cli-service serve [options] [entry]',
+        options: {...}
+    	},
+        async function serve (args) {
+           // 开始执行开发环境编译
+           info('Starting development server...')
+         
+           // ...
+           // 引入 webpack
+           const webpack = require('webpack')
+           // 引入 webpack-dev-server
+           const WebpackDevServer = require('webpack-dev-server')
+           
+           // ...
+           // 通过 api.resolveWebpackConfig 函数加载 webpack 配置
+           const webpackConfig = api.resolveWebpackConfig()
+           
+           // 对 webpack 配置进行校验
+           validateWebpackConfig(webpackConfig, api, options)
+         
+           // ...
+           // 调用 webpack 函数返回 compiler
+           const compiler = webpack(webpackConfig)
+           
+           // new WebpackDevServer，将 compiler 传进去，并且传入一些 webpack-dev-server 相关的参数
+           const server = new WebpackDevServer(compiler, Object.assign({...}))
+        }
+    )
+}
+```
+
+这个 fn 函数做的大致就是：
+
+- 引入 webpack、webpack-dev-server
+- 通过 api.resolveWebpackConfig 函数加载 webpack 配置
+- 调用 webpack 函数返回 compiler
+- new WebpackDevServer，将 compiler 传进去
+
+这基本就实现了开发环境的 webpack-dev-serve
+
+
+
+这只是粗略地看了一下加载配置的过程，其实 vue.config.js 中还允许：
+
+```js
+// vue.config.js
+
+module.exports = {
+  configureWebpack: {
+    plugins: [
+      new MyAwesomeWebpackPlugin()
+    ]
+  },
+  chainWebpack: config => {
+    config.module
+      .rule('vue')
+      .use('vue-loader')
+        .tap(options => {
+          // 修改它的选项...
+          return options
+        })
+  }
+}
+```
+
+
+
+**总结：**vue cli 的封装性比较高，包括 npm run serve/build 还有默认的基础配置都是通过 plugin 的形式集成到 vue cli 中，同时，vue cli 还开放出去了 plugin，那么别人也可以写 vue cli 插件，将功能集成到 vue cli。比如：vue-router、vuex、element-plus，都可以通过 vue add xxx 的形式添加进 vue 项目，这就是依赖于 vue cli 开放的插件机制。
